@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dirección - Café del Real</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root { --primary-color: #8b1c24; --secondary-color: #d4a373; --dark-color: #1a1a1a; --bg-color: #f0f2f5; --card-bg: #ffffff; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Montserrat', sans-serif; background-color: var(--bg-color); color: var(--dark-color); display: flex; height: 100vh; overflow: hidden; }
+        
+        #loginScreen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('fachada.jpg') center/cover; display: flex; justify-content: center; align-items: center; z-index: 9999; }
+        .login-box { background: white; padding: 40px; border-radius: 20px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.2); width: 90%; max-width: 400px; animation: slideUp 0.4s ease-out; }
+        .login-box h2 { color: var(--dark-color); font-size: 1.6rem; margin-bottom: 5px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px;}
+        .login-box p { color: #666; margin-bottom: 25px; font-weight: 600; font-size: 0.9rem;}
+        .login-box input { width: 100%; padding: 15px; font-size: 1.5rem; text-align: center; border: 2px solid #eee; border-radius: 12px; margin-bottom: 20px; font-family: 'Montserrat', sans-serif; transition: border 0.3s; letter-spacing: 8px; font-weight: bold; background: #f9f9f9; color: var(--dark-color);}
+        .login-box input:focus { border-color: var(--dark-color); outline: none; background: white;}
+        .login-box input::placeholder { color: #ccc; letter-spacing: 2px; }
+        .login-box button { width: 100%; background: var(--dark-color); color: white; padding: 18px; border: none; border-radius: 12px; font-size: 1rem; font-weight: 700; cursor: pointer; transition: 0.3s; text-transform: uppercase; letter-spacing: 1px;}
+        .login-box button:hover { background: #333; transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        #loginError { color: var(--primary-color); font-weight: bold; margin-top: 15px; display: none; }
+
+        #appContainer { display: none; width: 100%; height: 100%; }
+        .sidebar { width: 280px; background-color: var(--dark-color); color: white; padding: 30px 20px; display: flex; flex-direction: column; box-shadow: 4px 0 15px rgba(0,0,0,0.1); z-index: 10;}
+        .sidebar h2 { font-size: 1.4rem; margin-bottom: 40px; color: var(--secondary-color); text-align: center; border-bottom: 1px solid #333; padding-bottom: 20px; font-weight: 800; letter-spacing: 2px;}
+        .menu-item { padding: 15px; margin-bottom: 10px; border-radius: 8px; cursor: pointer; font-weight: 600; transition: 0.3s; display: flex; align-items: center; justify-content: center; gap: 10px; color: #ccc;}
+        .menu-item.activo { background-color: rgba(139, 28, 36, 0.2); color: var(--secondary-color); border-left: 4px solid var(--secondary-color); }
+        .menu-item:hover:not(.activo) { background-color: #222; color: white;}
+
+        .main-content { flex: 1; padding: 40px; overflow-y: auto; }
+        .seccion-admin { display: none; animation: fadeIn 0.4s; }
+        .seccion-admin.activa { display: block; }
+
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; }
+        .header h1 { font-size: 2.2rem; color: var(--dark-color); font-weight: 800; }
+        .btn-exportar { background: white; color: var(--dark-color); border: 2px solid #ddd; padding: 10px 20px; border-radius: 8px; font-weight: 700; cursor: pointer; transition: 0.3s; display: flex; align-items: center; gap: 8px; }
+        .btn-exportar:hover { border-color: var(--dark-color); }
+
+        .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 40px; }
+        .kpi-card { background: var(--card-bg); padding: 25px; border-radius: 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.03); border: 1px solid #eaeaea; position: relative; overflow: hidden;}
+        .kpi-title { font-size: 0.85rem; color: #888; font-weight: 700; text-transform: uppercase; margin-bottom: 10px; letter-spacing: 1px;}
+        .kpi-value { font-size: 2.5rem; font-weight: 800; color: var(--dark-color); }
+        .kpi-sub { font-size: 0.8rem; color: #777; font-weight: 600; margin-top: 5px;}
+
+        .dashboard-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
+        .panel-box { background: var(--card-bg); border-radius: 15px; padding: 30px; box-shadow: 0 5px 20px rgba(0,0,0,0.03); border: 1px solid #eaeaea; }
+        .panel-box h3 { font-size: 1.2rem; margin-bottom: 25px; color: var(--dark-color); display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f0f2f5; padding-bottom: 15px;}
+        .chart-container { position: relative; height: 300px; width: 100%; }
+        
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; padding: 12px 10px; color: #888; font-size: 0.8rem; text-transform: uppercase; border-bottom: 2px solid #f0f2f5; font-weight: 700;}
+        td { padding: 15px 10px; border-bottom: 1px solid #f0f2f5; font-size: 0.95rem; font-weight: 600;}
+        .badge { background: #fff3cd; color: #856404; padding: 5px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; }
+        .badge.money { background: #d4edda; color: #155724; }
+        .badge.sala { background: #cce5ff; color: #004085; }
+
+        .control-finanzas { display: flex; align-items: center; gap: 15px; background: #f9f9f9; padding: 20px; border-radius: 12px; margin-bottom: 30px; border: 1px dashed #ccc;}
+        .control-finanzas label { font-weight: 700; color: var(--dark-color); }
+        .control-finanzas input { padding: 10px; border: 2px solid #ddd; border-radius: 8px; font-weight: bold; font-size: 1.1rem; width: 100px; text-align: center; }
+
+        @keyframes slideUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* ========================================================== */
+        /* --- DISEÑO RESPONSIVE (MÓVILES Y TABLETS) ---              */
+        /* ========================================================== */
+        @media (max-width: 1024px) {
+            .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+            .dashboard-grid { grid-template-columns: 1fr; }
+        }
+
+        @media (max-width: 768px) {
+            body, #appContainer { flex-direction: column; overflow-y: auto; height: auto; min-height: 100vh;}
+            
+            /* Convertir menú lateral en menú superior */
+            .sidebar { width: 100%; padding: 15px; flex-direction: row; flex-wrap: wrap; justify-content: space-between; align-items: center; }
+            .sidebar h2 { font-size: 1.2rem; width: 100%; margin-bottom: 10px; padding-bottom: 10px; }
+            .menu-item { flex: 1; padding: 10px; font-size: 0.85rem; margin: 2px; border-left: none !important; border-bottom: 3px solid transparent;}
+            .menu-item.activo { border-bottom-color: var(--secondary-color); }
+            
+            .main-content { padding: 15px; }
+            .header { flex-direction: column; gap: 15px; text-align: center; margin-bottom: 20px;}
+            .header h1 { font-size: 1.5rem; }
+            
+            /* Estadísticas a una columna */
+            .kpi-grid { grid-template-columns: 1fr; gap: 15px; margin-bottom: 20px; }
+            .kpi-card { padding: 15px; }
+            .kpi-value { font-size: 2rem; }
+            
+            /* Control de finanzas */
+            .control-finanzas { flex-direction: column; text-align: center; }
+            
+            /* Paneles a una columna */
+            .dashboard-grid { flex-direction: column; gap: 20px;}
+            .panel-box { padding: 15px; }
+            .chart-container { height: 250px; }
+            
+            /* Tablas con scroll horizontal */
+            .tabla-responsive { overflow-x: auto; display: block; width: 100%; white-space: nowrap; }
+            th, td { padding: 10px 5px; font-size: 0.85rem;}
+        }
+    </style>
+</head>
+<body>
+
+    <div id="loginScreen">
+        <div class="login-box">
+            <h2>PANEL DE DIRECCIÓN</h2>
+            <p>Acceso restringido a gerencia</p>
+            <input type="password" id="pinInput" placeholder="****" maxlength="4" onkeypress="if(event.key === 'Enter') verificarLogin()">
+            <button onclick="verificarLogin()">ACCEDER A LAS MÉTRICAS</button>
+            <p id="loginError">❌ PIN incorrecto</p>
+        </div>
+    </div>
+
+    <div id="appContainer">
+        <div class="sidebar">
+            <h2>DIRECCIÓN</h2>
+            <div class="menu-item activo" onclick="cambiarPestana('panelGeneral', this)">📊 Panel General</div>
+            <div class="menu-item" onclick="cambiarPestana('panelFinanzas', this)">💶 Finanzas y Cobros</div>
+            <div class="menu-item" onclick="location.reload()" style="color: #e74c3c;">🔒 Salir</div>
+            <p style="font-size: 0.7rem; color: #555; text-align: center; margin-top: 15px; width: 100%;">&copy; 2026 Café del Real</p>
+        </div>
+
+        <div class="main-content">
+            
+            <div id="panelGeneral" class="seccion-admin activa">
+                <div class="header">
+                    <h1>Rendimiento del Local (Web + Sala)</h1>
+                </div>
+
+                <div class="kpi-grid">
+                    <div class="kpi-card" style="border-left: 5px solid var(--primary-color);">
+                        <div class="kpi-title">Reservas Web (Futuro)</div>
+                        <div class="kpi-value" id="kpiReservas">0</div>
+                        <div class="kpi-sub">⬆ Pendientes</div>
+                    </div>
+                    <div class="kpi-card" style="border-left: 5px solid var(--secondary-color);">
+                        <div class="kpi-title">Volumen Total (Pax)</div>
+                        <div class="kpi-value" id="kpiPax">0</div>
+                        <div class="kpi-sub">👥 Sala + Web</div>
+                    </div>
+                    <div class="kpi-card" style="border-left: 5px solid #2ecc71;">
+                        <div class="kpi-title">Caja Total (Real + Est.)</div>
+                        <div class="kpi-value" id="kpiIngresos">0€</div>
+                        <div class="kpi-sub">💶 Todo el día</div>
+                    </div>
+                    <div class="kpi-card" style="border-left: 5px solid #3498db;">
+                        <div class="kpi-title">Zona Estrella</div>
+                        <div class="kpi-value" id="kpiTopZona" style="font-size: 1.5rem; line-height: 2.5rem;">-</div>
+                        <div class="kpi-sub">⭐ Mayor afluencia</div>
+                    </div>
+                </div>
+
+                <div class="dashboard-grid">
+                    <div class="panel-box">
+                        <h3>Afluencia por Zonas</h3>
+                        <div class="chart-container"><canvas id="graficoZonas"></canvas></div>
+                    </div>
+                    <div class="panel-box">
+                        <h3>Actividad del Restaurante</h3>
+                        <div class="tabla-responsive">
+                            <table>
+                                <thead><tr><th>Día/Hora</th><th>Cliente / Mesa</th><th>Pax</th><th>Origen</th></tr></thead>
+                                <tbody id="listaReservasAdmin">
+                                    <tr><td colspan="4" style="text-align: center;">Cargando datos...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="panelFinanzas" class="seccion-admin">
+                <div class="header">
+                    <h1>Control Financiero</h1>
+                    <button class="btn-exportar" onclick="alert('Exportando contabilidad a Excel...')">📥 Exportar Contabilidad</button>
+                </div>
+
+                <div class="control-finanzas">
+                    <label>⚙️ Ajustar Ticket Medio Estimado por persona:</label>
+                    <input type="number" id="inputTicket" value="25" min="5" step="1">
+                    <span style="font-weight: bold; font-size: 1.2rem;">€</span>
+                    <span style="color: #777; font-size: 0.9rem; margin-left: 10px;">(Afecta solo al dinero Pendiente y Futuro)</span>
+                </div>
+
+                <div class="kpi-grid">
+                    <div class="kpi-card" style="border-left: 5px solid #2ecc71;">
+                        <div class="kpi-title">CAJA REAL COBRADA</div>
+                        <div class="kpi-value" id="kpiCajaReal" style="color: #2ecc71;">0.00€</div>
+                        <div class="kpi-sub">💰 Dinero en el cajón</div>
+                    </div>
+                    <div class="kpi-card" style="border-left: 5px solid #f39c12;">
+                        <div class="kpi-title">Pendiente (Mesas activas)</div>
+                        <div class="kpi-value" id="kpiPendiente">0.00€</div>
+                        <div class="kpi-sub">⏳ Consumiendo ahora</div>
+                    </div>
+                    <div class="kpi-card" style="border-left: 5px solid #3498db;">
+                        <div class="kpi-title">Reservas Futuras</div>
+                        <div class="kpi-value" id="kpiWeb">0.00€</div>
+                        <div class="kpi-sub">📅 Llegarán hoy</div>
+                    </div>
+                    <div class="kpi-card" style="border-left: 5px solid #8b1c24;">
+                        <div class="kpi-title">Ticket Medio Real</div>
+                        <div class="kpi-value" id="kpiTicketReal" style="font-size: 1.5rem; line-height: 2.5rem;">0.00€</div>
+                        <div class="kpi-sub">📊 Promedio según cobros</div>
+                    </div>
+                </div>
+
+                <div class="dashboard-grid">
+                    <div class="panel-box">
+                        <h3>Ingresos Reales por Zona (€)</h3>
+                        <div class="chart-container"><canvas id="graficoIngresos"></canvas></div>
+                    </div>
+                    <div class="panel-box">
+                        <h3>Historial de Cobros Cerrados</h3>
+                        <div class="tabla-responsive">
+                            <table>
+                                <thead><tr><th>Hora</th><th>Mesa/Zona</th><th>Total Cobrado</th></tr></thead>
+                                <tbody id="listaVentas">
+                                    <tr><td colspan="3" style="text-align: center; color: #999;">Sin cobros registrados hoy.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        function verificarLogin() {
+            if (document.getElementById('pinInput').value === "8888") {
+                document.getElementById('loginScreen').style.display = "none";
+                document.getElementById('appContainer').style.display = "flex";
+                document.getElementById('pinInput').value = ""; 
+                document.getElementById('loginError').style.display = "none";
+                inicializarGraficos();
+            } else {
+                document.getElementById('loginError').style.display = "block";
+            }
+        }
+
+        function cerrarSesion() {
+            document.getElementById('appContainer').style.display = "none";
+            document.getElementById('loginScreen').style.display = "flex";
+            cambiarPestana('panelGeneral', document.querySelectorAll('.menu-item')[0]);
+        }
+
+        function cambiarPestana(idPestana, btnElement) {
+            document.querySelectorAll('.seccion-admin').forEach(sec => sec.classList.remove('activa'));
+            document.getElementById(idPestana).classList.add('activa');
+            document.querySelectorAll('.menu-item').forEach(btn => btn.classList.remove('activo'));
+            btnElement.classList.add('activo');
+        }
+
+        let graficoDonut, graficoBarras;
+        
+        function inicializarGraficos() {
+            const ctx1 = document.getElementById('graficoZonas').getContext('2d');
+            graficoDonut = new Chart(ctx1, {
+                type: 'doughnut',
+                data: { labels: ['Bistrot', 'Pizzería', 'Terraza Alta', 'Terraza Baja'], datasets: [{ data: [0, 0, 0, 0], backgroundColor: ['#8b1c24', '#d4a373', '#2b2b2b', '#7f8c8d'], borderWidth: 0 }] },
+                options: { responsive: true, maintainAspectRatio: false, cutout: '70%' }
+            });
+
+            const ctx2 = document.getElementById('graficoIngresos').getContext('2d');
+            graficoBarras = new Chart(ctx2, {
+                type: 'bar',
+                data: { labels: ['Bistrot', 'Pizzería', 'Terraza Alta', 'Terraza Baja'], datasets: [{ label: 'Ingresos (€)', data: [0, 0, 0, 0], backgroundColor: '#2ecc71', borderRadius: 5 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+            });
+        }
+    </script>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAfwSf-fs2N_07EWUwpXS2EsLkpVHUXT_c",
+            authDomain: "cafe-del-real.firebaseapp.com",
+            projectId: "cafe-del-real",
+            storageBucket: "cafe-del-real.firebasestorage.app",
+            messagingSenderId: "840726489219",
+            appId: "1:840726489219:web:4a9a37d33f41aed9a513b6"
+        };
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        let datosWeb = [], datosSala = [], ventasReales = [];
+        const inputTicket = document.getElementById('inputTicket');
+        inputTicket.addEventListener('input', () => { procesarDatosCombinados(); });
+
+        onSnapshot(collection(db, "reservas_web"), (snapshot) => { datosWeb = []; snapshot.forEach(doc => datosWeb.push(doc.data())); procesarDatosCombinados(); });
+        onSnapshot(collection(db, "estado_mesas"), (snapshot) => { datosSala = []; snapshot.forEach(doc => datosSala.push({ idMesa: doc.id, ...doc.data() })); procesarDatosCombinados(); });
+        
+        onSnapshot(collection(db, "ventas_reales"), (snapshot) => {
+            ventasReales = []; 
+            const tbVentas = document.getElementById('listaVentas'); 
+            tbVentas.innerHTML = '';
+            
+            snapshot.forEach(doc => {
+                let venta = doc.data();
+                ventasReales.push(venta);
+                tbVentas.innerHTML += `<tr><td>${venta.hora}</td><td>Mesa ${venta.mesa} <br><span style="font-size:0.75rem;color:#888;">${venta.zona}</span></td><td><b style="color:#2ecc71;">${venta.total}€</b></td></tr>`;
+            });
+            
+            if(ventasReales.length === 0) tbVentas.innerHTML = '<tr><td colspan="3" style="text-align: center;">Sin cobros registrados hoy.</td></tr>';
+            procesarDatosCombinados();
+        });
+
+        function procesarDatosCombinados() {
+            let ticketMedio = parseInt(inputTicket.value) || 0;
+            let totalReservasWeb = 0, totalPax = 0;
+            let conteoZonas = { "Bistrot": 0, "Pizzería": 0, "Terraza Alta": 0, "Terraza Baja": 0 };
+            let dineroRealZonas = { "Bistrot": 0, "Pizzería": 0, "Terraza Alta": 0, "Terraza Baja": 0 };
+            
+            const tbodyGen = document.getElementById('listaReservasAdmin');
+            tbodyGen.innerHTML = '';
+
+            // 1. WEB
+            datosWeb.forEach(res => {
+                totalReservasWeb++;
+                let pax = parseInt(res.personas) || 2; totalPax += pax;
+                if(conteoZonas[res.zona] !== undefined) conteoZonas[res.zona]++;
+                tbodyGen.innerHTML += `<tr><td><span style="color:var(--primary-color); font-weight:800;">${res.fecha}</span><br>${res.hora}</td><td>${res.nombre}</td><td>${pax}</td><td><span class="badge">Web</span></td></tr>`;
+            });
+
+            // 2. SALA VIVA
+            let cajaPendiente = 0;
+            datosSala.forEach(mesa => {
+                let pax = parseInt(mesa.personas) || 2; totalPax += pax;
+                cajaPendiente += (pax * ticketMedio);
+                if(conteoZonas[mesa.zona] !== undefined) conteoZonas[mesa.zona]++;
+                
+                let origen = mesa.tipo === 'web' ? '<span class="badge">Web Sentada</span>' : '<span class="badge sala">Paso (Sala)</span>';
+                tbodyGen.innerHTML += `<tr><td><span style="color:#2ecc71; font-weight:800;">AHORA</span><br>${mesa.hora}</td><td>Mesa ${mesa.idMesa} <br><span style="font-size:0.75rem;color:#888;">${mesa.nombre}</span></td><td>${pax}</td><td>${origen}</td></tr>`;
+            });
+
+            // 3. CAJA REAL Y TICKET
+            let cajaReal = 0;
+            ventasReales.forEach(v => {
+                cajaReal += v.total;
+                if(dineroRealZonas[v.zona] !== undefined) dineroRealZonas[v.zona] += v.total;
+            });
+            let ticketMedioReal = ventasReales.length > 0 ? (cajaReal / ventasReales.length) : 0;
+            let cajaWebFutura = totalReservasWeb * ticketMedio;
+
+            if (datosWeb.length === 0 && datosSala.length === 0) {
+                tbodyGen.innerHTML = '<tr><td colspan="4" style="text-align: center;">Sin movimiento en sala hoy.</td></tr>';
+            }
+
+            // ACTUALIZAR KPIS
+            document.getElementById('kpiReservas').innerText = totalReservasWeb;
+            document.getElementById('kpiPax').innerText = totalPax;
+            document.getElementById('kpiIngresos').innerText = (cajaReal + cajaPendiente + cajaWebFutura).toFixed(2) + "€";
+            
+            document.getElementById('kpiCajaReal').innerText = cajaReal.toFixed(2) + "€";
+            document.getElementById('kpiPendiente').innerText = cajaPendiente.toFixed(2) + "€";
+            document.getElementById('kpiWeb').innerText = cajaWebFutura.toFixed(2) + "€";
+            document.getElementById('kpiTotalDia').innerText = (cajaReal + cajaPendiente + cajaWebFutura).toFixed(2) + "€";
+            document.getElementById('kpiTicketReal').innerText = ticketMedioReal.toFixed(2) + "€";
+
+            let zonaGanadora = "Ninguna"; let max = 0;
+            for (const [zona, cantidad] of Object.entries(conteoZonas)) { if(cantidad > max) { max = cantidad; zonaGanadora = zona; } }
+            document.getElementById('kpiTopZona').innerText = zonaGanadora.toUpperCase();
+
+            // ACTUALIZAR GRÁFICOS
+            if (window.graficoDonut && window.graficoBarras) {
+                window.graficoDonut.data.datasets[0].data = [conteoZonas["Bistrot"], conteoZonas["Pizzería"], conteoZonas["Terraza Alta"], conteoZonas["Terraza Baja"]];
+                window.graficoDonut.update();
+                
+                window.graficoBarras.data.datasets[0].data = [dineroRealZonas["Bistrot"], dineroRealZonas["Pizzería"], dineroRealZonas["Terraza Alta"], dineroRealZonas["Terraza Baja"]];
+                window.graficoBarras.update();
+            }
+        }
+    </script>
+</body>
+</html>
