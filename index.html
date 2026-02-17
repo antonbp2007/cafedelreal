@@ -242,17 +242,26 @@ Fecha de creación: 2026
                 margin: 0 auto !important;
                 overflow-x: hidden !important; 
             }
+            /* Forzamos a que el contenedor del paso no se expanda */
+            .form-reserva .step {
+                width: 100% !important;
+                box-sizing: border-box !important;
+            }
+            /* Reset extremo para inputs rebeldes en iOS/Android */
             .form-reserva input, 
-        .form-reserva select, 
-        .selector-grupo {
-            display: block !important;     /* <--- Fuerza al elemento a comportarse como un bloque */
-            width: 100% !important;
-            min-width: 0 !important;       /* <--- CRUCIAL PARA MÓVILES APPLE: Rompe su tamaño fijo oculto */
-            max-width: 100% !important;
-            box-sizing: border-box !important; 
-            margin-left: 0 !important;
-            margin-right: 0 !important;
-            text-align: center !important;
+            .form-reserva select, 
+            .selector-grupo {
+                -webkit-appearance: none !important; /* Mata el estilo bloqueado de Apple */
+                appearance: none !important;
+                width: 100% !important;
+                min-width: 0 !important;
+                max-width: 100% !important;
+                box-sizing: border-box !important; 
+                margin-left: 0 !important;
+                margin-right: 0 !important;
+                padding: 15px 10px !important; /* Controlamos el relleno exacto */
+                font-size: 16px !important; /* CRUCIAL: Evita el zoom automático del iPhone */
+                text-align: center !important; 
             }
         }
     </style>
@@ -901,6 +910,7 @@ Fecha de creación: 2026
     </script>
 </body>
 </html>
+
 
 
 
