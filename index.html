@@ -264,6 +264,28 @@ Fecha de creación: 2026
                 text-align: center !important; 
             }
         }
+            /* --- BOTÓN MODO PRUEBA --- */
+        #btnModoPrueba {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: #555;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 30px;
+            font-weight: bold;
+            font-size: 0.9rem;
+            z-index: 9999;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            transition: all 0.3s;
+            font-family: 'Montserrat', sans-serif;
+        }
+        #btnModoPrueba.activo {
+            background: #28a745; /* Color verde cuando está en ON */
+            box-shadow: 0 4px 15px rgba(40, 167, 69, 0.4);
+        }
     </style>
 </head>
 <body>
@@ -910,6 +932,7 @@ Fecha de creación: 2026
     </script>
 </body>
 </html>
+
 
 
 
