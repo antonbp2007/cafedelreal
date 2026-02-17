@@ -243,14 +243,16 @@ Fecha de creación: 2026
                 overflow-x: hidden !important; 
             }
             .form-reserva input, 
-            .form-reserva select, 
-            .selector-grupo {
-                width: 100% !important;
-                max-width: 100% !important;
-                box-sizing: border-box !important; 
-                margin-left: 0 !important;
-                margin-right: 0 !important;
-                text-align: center !important;
+        .form-reserva select, 
+        .selector-grupo {
+            display: block !important;     /* <--- Fuerza al elemento a comportarse como un bloque */
+            width: 100% !important;
+            min-width: 0 !important;       /* <--- CRUCIAL PARA MÓVILES APPLE: Rompe su tamaño fijo oculto */
+            max-width: 100% !important;
+            box-sizing: border-box !important; 
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+            text-align: center !important;
             }
         }
     </style>
@@ -899,6 +901,7 @@ Fecha de creación: 2026
     </script>
 </body>
 </html>
+
 
 
 
