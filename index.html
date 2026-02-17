@@ -665,7 +665,7 @@ Fecha de creación: 2026
         <p style="font-size: 0.9rem; opacity: 0.7;">© 2026 Café del Real. Todos los derechos reservados.</p>
     </footer>
 
-    <script>
+   <script>
         // --- SELECTOR PRINCIPAL BISTROT / PIZZERÍA ---
         function cambiarMenuPrincipal(menu, btnElement) {
             document.querySelectorAll('.btn-menu-switch').forEach(b => b.classList.remove('activo'));
@@ -683,7 +683,6 @@ Fecha de creación: 2026
         // --- FILTRO DE CADA CARTA INDIVIDUAL ---
         function filtrarCarta(categoria, btnElement) {
             const contenedorPadre = btnElement.closest('.contenedor-carta-padre');
-            
             const botones = contenedorPadre.querySelectorAll('.btn-filtro');
             botones.forEach(btn => btn.classList.remove('activo'));
             btnElement.classList.add('activo');
@@ -694,9 +693,9 @@ Fecha de creación: 2026
             });
         }
 
-        // --- MODAL DE RESERVAS ---
+        // --- MODAL DE RESERVAS Y LÓGICA ---
         const modal = document.getElementById("modalReserva");
-        function abrirModal() { modal.style.display = "flex"; document.body.style.overflow = "hidden"; cambiarPaso(0, 1); } 
+        function abrirModal() { modal.style.display = "flex"; document.body.style.overflow = "hidden"; window.cambiarPaso(0, 1); } 
         function cerrarModal() { modal.style.display = "none"; document.body.style.overflow = "auto"; }
         window.onclick = function(event) { if (event.target == modal) cerrarModal(); }
 
@@ -708,36 +707,43 @@ Fecha de creación: 2026
             document.getElementById('fecha').min = hoy;
         });
 
-        function cambiarPaso(actual, siguiente) {
+        window.cambiarPaso = function(actual, siguiente) {
             document.querySelectorAll('.step').forEach(step => step.classList.remove('activo'));
             document.getElementById('paso' + siguiente).classList.add('activo');
-            
             const progreso = (siguiente / 4) * 100;
             document.getElementById('barraProgreso').style.width = progreso + '%';
-            
             const titulosPasos = ["", "Comensales", "Fecha", "Hora y Ubicación", "Datos Personales"];
             document.getElementById('textoPaso').innerText = `Paso ${siguiente} de 4: ${titulosPasos[siguiente]}`;
-        }
-        window.cambiarPaso = cambiarPaso;
+        };
 
-        function validarHoraYPasar() {
-            if (!document.getElementById('hora').value) {
+        // BARRERA DE SEGURIDAD PARA EL BOTÓN SIGUIENTE
+        window.validarHoraYPasar = function() {
+            const selectHora = document.getElementById('hora');
+            if (!selectHora.value) {
                 alert("Por favor, selecciona una hora para tu reserva.");
-            } else {
-                cambiarPaso(3, 4);
+                return;
             }
-        }
-        window.validarHoraYPasar = validarHoraYPasar;
+            if (selectHora.options[selectHora.selectedIndex].disabled) {
+                alert("⚠️ Esa hora está completa para la zona elegida. Por favor, elige otra hora u otra zona.");
+                selectHora.value = "";
+                return;
+            }
+            window.cambiarPaso(3, 4);
+        };
 
+        // ALERTAS EN TIEMPO REAL
         document.querySelectorAll('#grupoPersonas .btn-opcion').forEach(boton => {
             boton.addEventListener('click', function() {
                 document.querySelectorAll('#grupoPersonas .btn-opcion').forEach(b => b.classList.remove('activo'));
                 this.classList.add('activo');
                 document.getElementById('personas').value = this.dataset.val; 
                 
-                // Si cambian el nº de personas, también recalculamos el aforo al momento
-                if (typeof window.actualizarHorasDisponibles === 'function') {
-                    window.actualizarHorasDisponibles();
+                const horaAntes = document.getElementById('hora').value;
+                if (typeof window.actualizarHorasDisponibles === 'function') window.actualizarHorasDisponibles();
+                const horaDespues = document.getElementById('hora').value;
+                
+                if (horaAntes && !horaDespues) {
+                    alert("⚠️ ¡Atención! Al subir el número de personas, la hora que habías elegido ya no tiene aforo suficiente.");
                 }
             });
         });
@@ -748,8 +754,12 @@ Fecha de creación: 2026
                 this.classList.add('activo');
                 document.getElementById('zona').value = this.dataset.val; 
                 
-                if (typeof window.actualizarHorasDisponibles === 'function') {
-                    window.actualizarHorasDisponibles();
+                const horaAntes = document.getElementById('hora').value;
+                if (typeof window.actualizarHorasDisponibles === 'function') window.actualizarHorasDisponibles();
+                const horaDespues = document.getElementById('hora').value;
+                
+                if (horaAntes && !horaDespues) {
+                    alert("⚠️ ¡Atención! Al cambiar a " + this.dataset.val + ", la hora que habías elegido ya está llena en esa zona.");
                 }
             });
         });
@@ -771,7 +781,12 @@ Fecha de creación: 2026
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // Objeto global para guardar cómo está de llena cada zona a cada hora
+        // MOTOR ANTI-ACENTOS Y MAYÚSCULAS
+        function normalizar(texto) {
+            if (!texto) return "";
+            return texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+        }
+
         window.ocupacionDelDia = {}; 
 
         window.comprobarDisponibilidad = async function() {
@@ -789,21 +804,19 @@ Fecha de creación: 2026
                 
                 querySnapshot.forEach((doc) => {
                     const data = doc.data();
-                    
-                    // 🛡️ PROTECCIÓN ANTI-BLOQUEOS: Ignora reservas antiguas mal hechas o sin datos
                     if (!data.hora || !data.zona) return; 
 
                     const hora = data.hora; 
-                    const zona = data.zona.trim().toLowerCase(); 
+                    const zona = normalizar(data.zona); 
                     let pax = parseInt(String(data.personas).replace('+', '')) || 2; 
 
                     let partes = hora.split(':');
-                    if (partes.length !== 2) return; // Ignora si la hora tiene un formato raro (ej: "14")
+                    if (partes.length !== 2) return; 
                     
                     let [h, m] = partes.map(Number);
                     if (isNaN(h) || isNaN(m)) return;
 
-                    // LÓGICA COVERMANAGER (90 min)
+                    // MOTOR COVERMANAGER: Reserva bloquea 90 minutos
                     for(let i = 0; i < 90; i += 30) {
                         let fechaCalculo = new Date(2000, 0, 1, h, m + i);
                         let hh = fechaCalculo.getHours().toString().padStart(2, '0');
@@ -817,13 +830,7 @@ Fecha de creación: 2026
                     }
                 });
 
-                // Pasamos al paso 3 (Hora y Zona)
-                if (typeof window.cambiarPaso === 'function') {
-                    window.cambiarPaso(2, 3);
-                } else if (typeof cambiarPaso === 'function') {
-                    cambiarPaso(2, 3);
-                }
-                
+                window.cambiarPaso(2, 3);
                 window.actualizarHorasDisponibles(); 
 
             } catch (error) {
@@ -837,18 +844,16 @@ Fecha de creación: 2026
         window.actualizarHorasDisponibles = function() {
             const CAPACIDAD = {
                 "bistrot": 6,
-                "pizzería": 6,
+                "pizzeria": 6,
                 "terraza alta": 6,
                 "terraza baja": 4
             };
 
-            // 🛡️ PROTECCIÓN: Fallbacks por si algún elemento tarda en cargar
             let selectPersonas = document.getElementById('personas');
-            let personasRaw = selectPersonas ? selectPersonas.value : "2";
-            let paxSolicitados = parseInt(personasRaw.replace('+', '')) || 2; 
+            let paxSolicitados = selectPersonas ? (parseInt(selectPersonas.value.replace('+', '')) || 2) : 2; 
             
             let selectZona = document.getElementById('zona');
-            let zonaSeleccionada = selectZona ? selectZona.value.trim().toLowerCase() : "";
+            let zonaSeleccionada = selectZona ? normalizar(selectZona.value) : "";
             
             const selectHora = document.getElementById('hora');
             if (!selectHora) return; 
@@ -866,7 +871,7 @@ Fecha de creación: 2026
                 opcion.text = opcion.value; 
                 opcion.disabled = false;    
 
-                // 1. Bloqueo de horas pasadas de hoy
+                // Bloquear pasadas de hoy
                 if (fechaInput === hoyString) {
                     const partes = opcion.value.split(':');
                     if(partes.length === 2) {
@@ -879,7 +884,7 @@ Fecha de creación: 2026
                     }
                 }
 
-                // 2. LÓGICA COVERMANAGER (90 min)
+                // Bloquear por aforo los 90 min siguientes
                 if (zonaSeleccionada !== "") {
                     let partesOp = opcion.value.split(':');
                     if(partesOp.length !== 2) return;
@@ -933,7 +938,6 @@ Fecha de creación: 2026
                     creado: new Date()
                 });
                 
-                // Mensaje limpio actualizado
                 alert("✅ ¡Reserva confirmada! Te esperamos en Café del Real.");
                 cerrarModal();
                 formReserva.reset();
@@ -943,12 +947,7 @@ Fecha de creación: 2026
                 document.querySelector('#grupoZona [data-val="Bistrot"]').classList.add('activo');
                 document.getElementById('personas').value = "2";
                 document.getElementById('zona').value = "Bistrot";
-                
-                if (typeof window.cambiarPaso === 'function') {
-                    window.cambiarPaso(4, 1); 
-                } else if (typeof cambiarPaso === 'function') {
-                    cambiarPaso(4, 1);
-                }
+                window.cambiarPaso(4, 1); 
 
             } catch (error) {
                 console.error("Error de Firebase: ", error);
@@ -961,16 +960,3 @@ Fecha de creación: 2026
     </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
