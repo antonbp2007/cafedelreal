@@ -187,6 +187,70 @@ Fecha de creación: 2026
             .modal-content { padding: 30px 20px; margin-top: 20px;}
             .nav-botones { flex-direction: column; gap: 10px; }
             .btn-siguiente, .btn-enviar, .btn-atras { width: 100%; padding: 15px; }
+       /* Para Teléfonos Móviles */
+        @media (max-width: 768px) {
+            /* Arreglo para la imagen borrosa en móviles */
+            .hero {
+                background-attachment: scroll !important;
+                background-position: center center !important;
+            }
+
+            /* Navbar más compacta */
+            nav { flex-direction: column; padding: 15px; gap: 15px; position: relative; background: white;}
+            nav ul { flex-wrap: wrap; justify-content: center; gap: 15px; }
+            
+            /* Título Hero ajustado al móvil */
+            .hero h1 { font-size: 2.8rem; }
+            .hero p { font-size: 1.1rem; padding: 0 10px; }
+            
+            /* Espaciados generales más pequeños para no agobiar */
+            .ambientes, .seccion-carta, .seccion-contacto { padding: 60px 20px; }
+            .ambientes h2, .seccion-carta h2, .seccion-contacto h2 { font-size: 2.2rem; }
+            
+            /* Tarjetas 100% de ancho */
+            .card { width: 100%; max-width: 100%; }
+            .card img { height: 250px; }
+            
+            /* Botones de carta ocupan todo el ancho para poder tocarlos bien */
+            .menu-switcher { flex-direction: column; gap: 15px; }
+            .btn-menu-switch { width: 100%; font-size: 1.1rem; }
+            .filtros-carta { flex-direction: column; gap: 10px; }
+            .btn-filtro { width: 100%; padding: 12px; font-size: 1rem; }
+            
+            /* Ajustes en los platos para que quepan los nombres largos */
+            .item-nombre { max-width: 75%; font-size: 0.9rem; }
+            .item-precio { font-size: 0.95rem; }
+            
+            /* Modal de reservas ajustado */
+            .modal-content { padding: 30px 20px; margin-top: 20px;}
+            .nav-botones { flex-direction: column; gap: 10px; }
+            .btn-siguiente, .btn-enviar, .btn-atras { width: 100%; padding: 15px; }
+        } /* <--- ESTA ES LA LLAVE QUE FALTABA PARA SEPARAR LOS BLOQUES */
+
+        /* ========================================= */
+        /* PARCHE DEFINITIVO ANTI-DESCUADRE EN MÓVIL */
+        /* ========================================= */
+        @media (max-width: 768px) {
+            .modal {
+                padding: 15px !important; 
+            }
+            .modal-content {
+                width: 100% !important;
+                max-width: 100% !important;
+                padding: 25px 15px !important; 
+                box-sizing: border-box !important;
+                margin: 0 auto !important;
+                overflow-x: hidden !important; 
+            }
+            .form-reserva input, 
+            .form-reserva select, 
+            .selector-grupo {
+                width: 100% !important;
+                max-width: 100% !important;
+                box-sizing: border-box !important; 
+                margin-left: 0 !important;
+                margin-right: 0 !important;
+            }
         }
     </style>
 </head>
@@ -809,5 +873,6 @@ Fecha de creación: 2026
     </script>
 </body>
 </html>
+
 
 
