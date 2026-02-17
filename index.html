@@ -836,12 +836,12 @@ Fecha de creación: 2026
         // Objeto global para guardar cómo está de llena cada zona a cada hora
         window.ocupacionDelDia = {}; 
 
-       window.comprobarDisponibilidad = async function() {
+      window.comprobarDisponibilidad = async function() {
             const fechaInput = document.getElementById('fecha').value;
             if (!fechaInput) { alert("Por favor, selecciona un día."); return; }
 
             const btn = document.getElementById('btnComprobarMesas');
-            btn.innerText = "Calculando aforo..."; btn.disabled = true;
+            if (btn) { btn.innerText = "Calculando aforo..."; btn.disabled = true; }
 
             try {
                 const q = query(collection(db, "reservas_web"), where("fecha", "==", fechaInput));
@@ -851,13 +851,21 @@ Fecha de creación: 2026
                 
                 querySnapshot.forEach((doc) => {
                     const data = doc.data();
+                    
+                    // 🛡️ PROTECCIÓN ANTI-BLOQUEOS: Ignora reservas antiguas mal hechas o sin datos
+                    if (!data.hora || !data.zona) return; 
+
                     const hora = data.hora; 
-                    const zona = (data.zona || "").trim().toLowerCase(); 
+                    const zona = data.zona.trim().toLowerCase(); 
                     let pax = parseInt(String(data.personas).replace('+', '')) || 2; 
 
-                    // LÓGICA COVERMANAGER: Llenamos el aforo durante 90 minutos (3 tramos de 30 min)
-                    // Así el sistema sabe que esa mesa está "secuestrada" durante todo ese tiempo
-                    let [h, m] = hora.split(':').map(Number);
+                    let partes = hora.split(':');
+                    if (partes.length !== 2) return; // Ignora si la hora tiene un formato raro (ej: "14")
+                    
+                    let [h, m] = partes.map(Number);
+                    if (isNaN(h) || isNaN(m)) return;
+
+                    // LÓGICA COVERMANAGER (90 min)
                     for(let i = 0; i < 90; i += 30) {
                         let fechaCalculo = new Date(2000, 0, 1, h, m + i);
                         let hh = fechaCalculo.getHours().toString().padStart(2, '0');
@@ -871,19 +879,24 @@ Fecha de creación: 2026
                     }
                 });
 
-                window.cambiarPaso(2, 3);
+                // Pasamos al paso 3 (Hora y Zona)
+                if (typeof window.cambiarPaso === 'function') {
+                    window.cambiarPaso(2, 3);
+                } else if (typeof cambiarPaso === 'function') {
+                    cambiarPaso(2, 3);
+                }
+                
                 window.actualizarHorasDisponibles(); 
 
             } catch (error) {
-                console.error("Error al comprobar aforo:", error);
-                alert("Hubo un error de conexión.");
+                console.error("Error fatal en Firebase:", error);
+                alert("Hubo un error al comprobar las mesas. Inténtalo de nuevo.");
             } finally {
-                btn.innerText = "Siguiente ➔"; btn.disabled = false;
+                if (btn) { btn.innerText = "Siguiente ➔"; btn.disabled = false; }
             }
         };
 
         window.actualizarHorasDisponibles = function() {
-            // LÍMITES POR ZONA (En minúsculas para coincidir siempre)
             const CAPACIDAD = {
                 "bistrot": 6,
                 "pizzería": 6,
@@ -891,15 +904,22 @@ Fecha de creación: 2026
                 "terraza baja": 4
             };
 
-            let personasRaw = document.getElementById('personas').value || "2";
+            // 🛡️ PROTECCIÓN: Fallbacks por si algún elemento tarda en cargar
+            let selectPersonas = document.getElementById('personas');
+            let personasRaw = selectPersonas ? selectPersonas.value : "2";
             let paxSolicitados = parseInt(personasRaw.replace('+', '')) || 2; 
             
-            let zonaSeleccionada = (document.getElementById('zona').value || "").trim().toLowerCase();
+            let selectZona = document.getElementById('zona');
+            let zonaSeleccionada = selectZona ? selectZona.value.trim().toLowerCase() : "";
+            
             const selectHora = document.getElementById('hora');
+            if (!selectHora) return; 
             
             const ahora = new Date();
             const hoyString = ahora.toLocaleDateString("en-CA"); 
-            const fechaInput = document.getElementById('fecha').value;
+            
+            let selectFecha = document.getElementById('fecha');
+            const fechaInput = selectFecha ? selectFecha.value : "";
             const horaActualMinutos = (ahora.getHours() * 60) + ahora.getMinutes();
 
             Array.from(selectHora.options).forEach(opcion => {
@@ -911,39 +931,50 @@ Fecha de creación: 2026
                 // 1. Bloqueo de horas pasadas de hoy
                 if (fechaInput === hoyString) {
                     const partes = opcion.value.split(':');
-                    const opcionMinutos = (parseInt(partes[0]) * 60) + parseInt(partes[1]);
-                    if (opcionMinutos <= horaActualMinutos) {
+                    if(partes.length === 2) {
+                        const opcionMinutos = (parseInt(partes[0]) * 60) + parseInt(partes[1]);
+                        if (opcionMinutos <= horaActualMinutos) {
+                            opcion.disabled = true;
+                            opcion.text = opcion.value + " (Pasada)";
+                            return; 
+                        }
+                    }
+                }
+
+                // 2. LÓGICA COVERMANAGER (90 min)
+                if (zonaSeleccionada !== "") {
+                    let partesOp = opcion.value.split(':');
+                    if(partesOp.length !== 2) return;
+                    
+                    let [h, m] = partesOp.map(Number);
+                    let puedeReservar = true;
+
+                    for(let i = 0; i < 90; i += 30) {
+                        let fechaCalculo = new Date(2000, 0, 1, h, m + i);
+                        let hh = fechaCalculo.getHours().toString().padStart(2, '0');
+                        let mm = fechaCalculo.getMinutes().toString().padStart(2, '0');
+                        let tramo = `${hh}:${mm}`;
+
+                        let ocupadoEnEseTramo = (window.ocupacionDelDia[tramo] && window.ocupacionDelDia[tramo][zonaSeleccionada]) ? window.ocupacionDelDia[tramo][zonaSeleccionada] : 0;
+                        let limiteMaximo = CAPACIDAD[zonaSeleccionada] || 6;
+
+                        if ((ocupadoEnEseTramo + paxSolicitados) > limiteMaximo) {
+                            puedeReservar = false;
+                            break; 
+                        }
+                    }
+
+                    if (!puedeReservar) {
                         opcion.disabled = true;
-                        opcion.text = opcion.value + " (Pasada)";
-                        return; 
+                        opcion.text = opcion.value + " (Completo)";
                     }
-                }
-
-                // 2. LÓGICA COVERMANAGER: Comprobar que hay sitio durante TODA la duración de la nueva reserva (90 min)
-                let [h, m] = opcion.value.split(':').map(Number);
-                let puedeReservar = true;
-
-                for(let i = 0; i < 90; i += 30) {
-                    let fechaCalculo = new Date(2000, 0, 1, h, m + i);
-                    let hh = fechaCalculo.getHours().toString().padStart(2, '0');
-                    let mm = fechaCalculo.getMinutes().toString().padStart(2, '0');
-                    let tramo = `${hh}:${mm}`;
-
-                    let ocupadoEnEseTramo = (window.ocupacionDelDia[tramo] && window.ocupacionDelDia[tramo][zonaSeleccionada]) ? window.ocupacionDelDia[tramo][zonaSeleccionada] : 0;
-                    let limiteMaximo = CAPACIDAD[zonaSeleccionada] || 6;
-
-                    // Si en CUALQUIERA de los 3 tramos que dura la comida se supera el aforo...
-                    if ((ocupadoEnEseTramo + paxSolicitados) > limiteMaximo) {
-                        puedeReservar = false;
-                        break; // ...cortamos y bloqueamos esa hora de inicio.
-                    }
-                }
-
-                if (!puedeReservar) {
-                    opcion.disabled = true;
-                    opcion.text = opcion.value + " (Completo)";
                 }
             });
+
+            if (selectHora.selectedIndex > 0 && selectHora.options[selectHora.selectedIndex].disabled) {
+                selectHora.value = "";
+            }
+        };
 
             // Si el cliente tenía una hora marcada y de repente se bloquea, se la borramos
             if (selectHora.selectedIndex > 0 && selectHora.options[selectHora.selectedIndex].disabled) {
@@ -1037,6 +1068,7 @@ Fecha de creación: 2026
     </script>
 </body>
 </html>
+
 
 
 
