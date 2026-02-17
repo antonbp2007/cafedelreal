@@ -79,6 +79,8 @@ Fecha de creación: 2026
         .btn-asignar { padding: 8px 12px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; color: white; background-color: #3498db; transition: all 0.3s;}
         .btn-asignar:hover { background-color: #2980b9; transform: translateY(-2px); box-shadow: 0 4px 8px rgba(52, 152, 219, 0.3);}
         .row-nueva { animation: parpadear 2s infinite; background-color: #fff8e1; }
+        .btn-eliminar { padding: 8px 10px; border: none; border-radius: 5px; cursor: pointer; background-color: #e74c3c; color: white; font-size: 0.9rem; transition: 0.3s; margin-left: 5px; }
+        .btn-eliminar:hover { background-color: #c0392b; transform: translateY(-2px); box-shadow: 0 4px 8px rgba(231, 76, 60, 0.3); }
         
         @keyframes slideUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         @keyframes parpadear { 0% { background-color: #fff8e1; } 50% { background-color: #ffeaa7; } 100% { background-color: #fff8e1; } }
@@ -364,6 +366,17 @@ Fecha de creación: 2026
             }
             await deleteDoc(doc(db, "estado_mesas", idMesa));
         };
+        // FUNCIÓN NUEVA: ELIMINAR RESERVA DESDE EL PANEL
+        window.eliminarReserva = async function(idReserva, nombreCliente) {
+            if (confirm(`¿Estás seguro de que quieres CANCELAR y borrar la reserva de ${nombreCliente}?`)) {
+                try {
+                    await deleteDoc(doc(db, "reservas_web", idReserva));
+                } catch (error) {
+                    console.error("Error al eliminar la reserva:", error);
+                    alert("Hubo un error al intentar borrar la reserva.");
+                }
+            }
+        };
 
         const tbody = document.getElementById('listaReservas');
         const contador = document.getElementById('contadorPendientes');
@@ -380,7 +393,10 @@ Fecha de creación: 2026
                         <td class="time">${reserva.hora}</td>
                         <td class="nombre-cliente">${reserva.nombre} <br><span style="font-size:0.7rem; color:#888;">${reserva.zona}</span></td>
                         <td class="pax-reserva">${reserva.personas}</td>
-                        <td><button class="btn-asignar" data-id="${idReserva}" data-nombre="${reserva.nombre}" data-hora="${reserva.hora}" data-pax="${reserva.personas}">Asignar</button></td>
+                        <td style="display: flex; align-items: center;">
+                            <button class="btn-asignar" data-id="${idReserva}" data-nombre="${reserva.nombre}" data-hora="${reserva.hora}" data-pax="${reserva.personas}">Asignar</button>
+                            <button class="btn-eliminar" onclick="eliminarReserva('${idReserva}', '${reserva.nombre}')" title="Eliminar reserva">❌</button>
+                        </td>
                     `;
                     tbody.appendChild(fila);
                 });
@@ -434,3 +450,4 @@ Fecha de creación: 2026
     </script>
 </body>
 </html>
+
