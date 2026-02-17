@@ -796,6 +796,11 @@ Fecha de creación: 2026
                 document.querySelectorAll('#grupoPersonas .btn-opcion').forEach(b => b.classList.remove('activo'));
                 this.classList.add('activo');
                 document.getElementById('personas').value = this.dataset.val; 
+                
+                // Si cambian el nº de personas, también recalculamos el aforo al momento
+                if (typeof window.actualizarHorasDisponibles === 'function') {
+                    window.actualizarHorasDisponibles();
+                }
             });
         });
 
@@ -804,6 +809,10 @@ Fecha de creación: 2026
                 document.querySelectorAll('#grupoZona .btn-opcion').forEach(b => b.classList.remove('activo'));
                 this.classList.add('activo');
                 document.getElementById('zona').value = this.dataset.val; 
+                
+                if (typeof window.actualizarHorasDisponibles === 'function') {
+                    window.actualizarHorasDisponibles();
+                }
             });
         });
     </script>
@@ -824,7 +833,10 @@ Fecha de creación: 2026
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-    window.comprobarDisponibilidad = async function() {
+        // Objeto global para guardar cómo está de llena cada zona a cada hora
+        window.ocupacionDelDia = {}; 
+
+        window.comprobarDisponibilidad = async function() {
             const fechaInput = document.getElementById('fecha').value;
             if (!fechaInput) {
                 alert("Por favor, selecciona un día en el calendario antes de continuar.");
@@ -832,64 +844,93 @@ Fecha de creación: 2026
             }
 
             const btn = document.getElementById('btnComprobarMesas');
-            btn.innerText = "Comprobando mesas...";
+            btn.innerText = "Calculando aforo...";
             btn.disabled = true;
 
             try {
-                const LÍMITE_RESERVAS_POR_HORA = 3; 
+                // Buscamos todas las reservas de ese día
                 const q = query(collection(db, "reservas_web"), where("fecha", "==", fechaInput));
                 const querySnapshot = await getDocs(q);
                 
-                const ocupacionPorHora = {};
-                querySnapshot.forEach((doc) => {
-                    const hora = doc.data().hora;
-                    ocupacionPorHora[hora] = (ocupacionPorHora[hora] || 0) + 1;
-                });
-
-                // --- NUEVA LÓGICA: BLOQUEAR HORAS PASADAS ---
-                const selectHora = document.getElementById('hora');
+                window.ocupacionDelDia = {}; 
                 
-                // Obtenemos la fecha y hora de este mismo instante
-                const ahora = new Date();
-                // Ajustamos el formato para compararlo con el input (YYYY-MM-DD)
-                const hoyString = ahora.toLocaleDateString("en-CA"); 
-                // Convertimos la hora actual a minutos totales (ej: 14:30 -> 14*60 + 30 = 870)
-                const horaActualMinutos = (ahora.getHours() * 60) + ahora.getMinutes();
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    const hora = data.hora;
+                    const zona = data.zona;
+                    // Limpiamos el texto "6+" si lo hay y lo pasamos a número
+                    let pax = parseInt(data.personas.replace('+', '')) || 2; 
 
-                Array.from(selectHora.options).forEach(opcion => {
-                    if (opcion.value === "") return; 
+                    if (!window.ocupacionDelDia[hora]) window.ocupacionDelDia[hora] = {};
+                    if (!window.ocupacionDelDia[hora][zona]) window.ocupacionDelDia[hora][zona] = 0;
                     
-                    opcion.text = opcion.value; // Restauramos el texto original
-                    opcion.disabled = false;    // La habilitamos por defecto
-
-                    // 1. Si el cliente elige HOY, comprobamos si la hora de la opción ya ha pasado
-                    if (fechaInput === hoyString) {
-                        const partesHora = opcion.value.split(':');
-                        const opcionMinutos = (parseInt(partesHora[0]) * 60) + parseInt(partesHora[1]);
-                        
-                        // Si la hora de la opción es menor o igual a la hora real, la bloqueamos
-                        if (opcionMinutos <= horaActualMinutos) {
-                            opcion.disabled = true;
-                            opcion.text = opcion.value + " (Pasada)";
-                        }
-                    }
-
-                    // 2. Si la hora no ha pasado, comprobamos si el restaurante está lleno
-                    if (!opcion.disabled && ocupacionPorHora[opcion.value] >= LÍMITE_RESERVAS_POR_HORA) {
-                        opcion.disabled = true;
-                        opcion.text = opcion.value + " (Completo)";
-                    }
+                    // Sumamos las sillas ocupadas
+                    window.ocupacionDelDia[hora][zona] += pax; 
                 });
 
-                // Pasamos al siguiente paso visualmente
                 window.cambiarPaso(2, 3);
+                window.actualizarHorasDisponibles(); // Filtramos las horas
 
             } catch (error) {
-                console.error("Error al comprobar las mesas:", error);
+                console.error("Error al comprobar aforo:", error);
                 alert("Hubo un error al comprobar la disponibilidad. Inténtalo de nuevo.");
             } finally {
                 btn.innerText = "Siguiente ➔";
                 btn.disabled = false;
+            }
+        };
+
+        window.actualizarHorasDisponibles = function() {
+            // --- AQUÍ PONES EL MÁXIMO DE PERSONAS QUE CABEN EN CADA ZONA ---
+            const CAPACIDAD = {
+                "Bistrot": 6,
+                "Pizzería": 6,
+                "Terraza Alta": 6,
+                "Terraza Baja": 4
+            };
+
+            let personasRaw = document.getElementById('personas').value;
+            let paxSolicitados = parseInt(personasRaw.replace('+', '')); 
+            if (isNaN(paxSolicitados)) paxSolicitados = 6;
+
+            const zonaSeleccionada = document.getElementById('zona').value;
+            const selectHora = document.getElementById('hora');
+            
+            const ahora = new Date();
+            const hoyString = ahora.toLocaleDateString("en-CA"); 
+            const fechaInput = document.getElementById('fecha').value;
+            const horaActualMinutos = (ahora.getHours() * 60) + ahora.getMinutes();
+
+            Array.from(selectHora.options).forEach(opcion => {
+                if (opcion.value === "") return; 
+                
+                opcion.text = opcion.value; 
+                opcion.disabled = false;    
+
+                // 1. Ocultar si la hora ya ha pasado hoy
+                if (fechaInput === hoyString) {
+                    const partes = opcion.value.split(':');
+                    const opcionMinutos = (parseInt(partes[0]) * 60) + parseInt(partes[1]);
+                    if (opcionMinutos <= horaActualMinutos) {
+                        opcion.disabled = true;
+                        opcion.text = opcion.value + " (Pasada)";
+                        return; // Paramos aquí para esta hora
+                    }
+                }
+
+                // 2. Ocultar si se supera el aforo máximo de la zona
+                const ocupado = (window.ocupacionDelDia[opcion.value] && window.ocupacionDelDia[opcion.value][zonaSeleccionada]) ? window.ocupacionDelDia[opcion.value][zonaSeleccionada] : 0;
+                const limiteMaximo = CAPACIDAD[zonaSeleccionada] || 6;
+
+                if (ocupado + paxSolicitados > limiteMaximo) {
+                    opcion.disabled = true;
+                    opcion.text = opcion.value + " (Completo)";
+                }
+            });
+
+            // Borrar la hora si se bloquea de repente al cambiar de zona
+            if (selectHora.selectedIndex > 0 && selectHora.options[selectHora.selectedIndex].disabled) {
+                selectHora.value = "";
             }
         };
 
@@ -912,7 +953,8 @@ Fecha de creación: 2026
                     creado: new Date()
                 });
                 
-                alert("✅ ¡Reserva confirmada de verdad! Los datos ya están en la base de datos.");
+                // Mensaje limpio actualizado
+                alert("✅ ¡Reserva confirmada! Te esperamos en Café del Real.");
                 cerrarModal();
                 formReserva.reset();
                 
@@ -934,6 +976,7 @@ Fecha de creación: 2026
     </script>
 </body>
 </html>
+
 
 
 
