@@ -788,7 +788,7 @@ Fecha de creación: 2026
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        window.comprobarDisponibilidad = async function() {
+    window.comprobarDisponibilidad = async function() {
             const fechaInput = document.getElementById('fecha').value;
             if (!fechaInput) {
                 alert("Por favor, selecciona un día en el calendario antes de continuar.");
@@ -810,17 +810,42 @@ Fecha de creación: 2026
                     ocupacionPorHora[hora] = (ocupacionPorHora[hora] || 0) + 1;
                 });
 
+                // --- NUEVA LÓGICA: BLOQUEAR HORAS PASADAS ---
                 const selectHora = document.getElementById('hora');
+                
+                // Obtenemos la fecha y hora de este mismo instante
+                const ahora = new Date();
+                // Ajustamos el formato para compararlo con el input (YYYY-MM-DD)
+                const hoyString = ahora.toLocaleDateString("en-CA"); 
+                // Convertimos la hora actual a minutos totales (ej: 14:30 -> 14*60 + 30 = 870)
+                const horaActualMinutos = (ahora.getHours() * 60) + ahora.getMinutes();
+
                 Array.from(selectHora.options).forEach(opcion => {
                     if (opcion.value === "") return; 
-                    opcion.text = opcion.value;
-                    opcion.disabled = false;
-                    if (ocupacionPorHora[opcion.value] >= LÍMITE_RESERVAS_POR_HORA) {
+                    
+                    opcion.text = opcion.value; // Restauramos el texto original
+                    opcion.disabled = false;    // La habilitamos por defecto
+
+                    // 1. Si el cliente elige HOY, comprobamos si la hora de la opción ya ha pasado
+                    if (fechaInput === hoyString) {
+                        const partesHora = opcion.value.split(':');
+                        const opcionMinutos = (parseInt(partesHora[0]) * 60) + parseInt(partesHora[1]);
+                        
+                        // Si la hora de la opción es menor o igual a la hora real, la bloqueamos
+                        if (opcionMinutos <= horaActualMinutos) {
+                            opcion.disabled = true;
+                            opcion.text = opcion.value + " (Pasada)";
+                        }
+                    }
+
+                    // 2. Si la hora no ha pasado, comprobamos si el restaurante está lleno
+                    if (!opcion.disabled && ocupacionPorHora[opcion.value] >= LÍMITE_RESERVAS_POR_HORA) {
                         opcion.disabled = true;
                         opcion.text = opcion.value + " (Completo)";
                     }
                 });
 
+                // Pasamos al siguiente paso visualmente
                 window.cambiarPaso(2, 3);
 
             } catch (error) {
@@ -873,6 +898,7 @@ Fecha de creación: 2026
     </script>
 </body>
 </html>
+
 
 
 
