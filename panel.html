@@ -118,6 +118,28 @@ Fecha de creación: 2026
             th, td { padding: 10px 5px; font-size: 0.85rem;}
             .btn-asignar { padding: 6px 8px; font-size: 0.8rem; }
         }
+        
+        /* --- BOTÓN MODO PRUEBA EN EL PANEL --- */
+        #btnModoPrueba {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #555;
+            color: white;
+            padding: 15px 25px;
+            border: none;
+            border-radius: 30px;
+            font-weight: bold;
+            font-size: 1rem;
+            z-index: 9999;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            transition: all 0.3s;
+        }
+        #btnModoPrueba.activo {
+            background: #28a745; 
+            box-shadow: 0 4px 15px rgba(40, 167, 69, 0.4);
+        }
     </style>
 </head>
 <body>
@@ -210,6 +232,8 @@ Fecha de creación: 2026
         </div>
     </div>
 
+    <button id="btnModoPrueba">Modo Prueba: OFF</button>
+
     <script>
         function verificarLogin() {
             if (document.getElementById('pinInput').value === "1234") {
@@ -284,7 +308,7 @@ Fecha de creación: 2026
                     actualizarEstadisticas();
                 }
             } else {
-                // 3. COBRAR MESA (NUEVO)
+                // 3. COBRAR MESA
                 let totalStr = prompt(`💸 COBRAR MESA ${nombreMesa}\nIntroduce el total exacto pagado en euros (€):`, "0");
                 if (totalStr !== null) {
                     let importe = parseFloat(totalStr.replace(',', '.'));
@@ -370,7 +394,43 @@ Fecha de creación: 2026
                 });
             });
         });
+
+        // --- LÓGICA MODO PRUEBA ---
+        let intervaloPrueba = null;
+        let modoPruebaActivo = false;
+        const btnPrueba = document.getElementById('btnModoPrueba');
+
+        btnPrueba.addEventListener('click', () => {
+            modoPruebaActivo = !modoPruebaActivo;
+            if (modoPruebaActivo) {
+                btnPrueba.innerText = "Modo Prueba: ON";
+                btnPrueba.classList.add('activo');
+                generarReservaPrueba();
+                intervaloPrueba = setInterval(generarReservaPrueba, 8000); // Una reserva cada 8 seg
+            } else {
+                btnPrueba.innerText = "Modo Prueba: OFF";
+                btnPrueba.classList.remove('activo');
+                clearInterval(intervaloPrueba);
+            }
+        });
+
+        async function generarReservaPrueba() {
+            const nombres = ["Carlos Test", "Maria Prueba", "Bot Restaurante", "Cliente VIP", "Reserva Auto"];
+            const horas = ["13:30", "14:00", "20:30", "21:00"];
+            const zonas = ["Bistrot", "Pizzería", "Terraza Alta"];
+            
+            try {
+                await addDoc(collection(db, "reservas_web"), {
+                    nombre: nombres[Math.floor(Math.random() * nombres.length)],
+                    personas: (Math.floor(Math.random() * 4) + 1).toString(),
+                    fecha: new Date().toISOString().split('T')[0],
+                    hora: horas[Math.floor(Math.random() * horas.length)],
+                    zona: zonas[Math.floor(Math.random() * zonas.length)],
+                    estado: "pendiente",
+                    creado: new Date()
+                });
+            } catch (e) { console.error("Error modo prueba:", e); }
+        }
     </script>
 </body>
-
 </html>
