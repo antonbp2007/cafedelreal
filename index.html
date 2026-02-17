@@ -137,7 +137,6 @@ Fecha de creación: 2026
         .btn-atras:hover { background: #ddd; }
         .btn-enviar:disabled, .btn-siguiente:disabled { background: #aaa; cursor: not-allowed; }
 
-
         /* ========================================================== */
         /* --- CÓDIGO RESPONSIVE (MAGIA PARA MÓVILES Y TABLETS) ---   */
         /* ========================================================== */
@@ -149,45 +148,6 @@ Fecha de creación: 2026
         }
 
         /* Para Teléfonos Móviles */
-        @media (max-width: 768px) {
-    
-    /* Arreglo para la imagen borrosa en móviles */
-    .hero {
-        background-attachment: scroll !important;
-        background-position: center center !important;
-    }
-
-    /* Navbar más compacta */
-    nav { flex-direction: column; padding: 15px; gap: 15px; position: relative; background: white;}
-            nav ul { flex-wrap: wrap; justify-content: center; gap: 15px; }
-            
-            /* Título Hero ajustado al móvil */
-            .hero h1 { font-size: 2.8rem; }
-            .hero p { font-size: 1.1rem; padding: 0 10px; }
-            
-            /* Espaciados generales más pequeños para no agobiar */
-            .ambientes, .seccion-carta, .seccion-contacto { padding: 60px 20px; }
-            .ambientes h2, .seccion-carta h2, .seccion-contacto h2 { font-size: 2.2rem; }
-            
-            /* Tarjetas 100% de ancho */
-            .card { width: 100%; max-width: 100%; }
-            .card img { height: 250px; }
-            
-            /* Botones de carta ocupan todo el ancho para poder tocarlos bien */
-            .menu-switcher { flex-direction: column; gap: 15px; }
-            .btn-menu-switch { width: 100%; font-size: 1.1rem; }
-            .filtros-carta { flex-direction: column; gap: 10px; }
-            .btn-filtro { width: 100%; padding: 12px; font-size: 1rem; }
-            
-            /* Ajustes en los platos para que quepan los nombres largos */
-            .item-nombre { max-width: 75%; font-size: 0.9rem; }
-            .item-precio { font-size: 0.95rem; }
-            
-            /* Modal de reservas ajustado */
-            .modal-content { padding: 30px 20px; margin-top: 20px;}
-            .nav-botones { flex-direction: column; gap: 10px; }
-            .btn-siguiente, .btn-enviar, .btn-atras { width: 100%; padding: 15px; }
-       /* Para Teléfonos Móviles */
         @media (max-width: 768px) {
             /* Arreglo para la imagen borrosa en móviles */
             .hero {
@@ -225,7 +185,7 @@ Fecha de creación: 2026
             .modal-content { padding: 30px 20px; margin-top: 20px;}
             .nav-botones { flex-direction: column; gap: 10px; }
             .btn-siguiente, .btn-enviar, .btn-atras { width: 100%; padding: 15px; }
-        } /* <--- ESTA ES LA LLAVE QUE FALTABA PARA SEPARAR LOS BLOQUES */
+        }
 
         /* ========================================= */
         /* PARCHE DEFINITIVO ANTI-DESCUADRE EN MÓVIL */
@@ -263,30 +223,8 @@ Fecha de creación: 2026
                 font-size: 16px !important; /* CRUCIAL: Evita el zoom automático del iPhone */
                 text-align: center !important; 
                 color: #2b2b2b !important; /* <--- LÍNEA NUEVA: Fuerza el texto a negro oscuro */
-                opacity: 1 !important; /* <--- Evita que el móvil lo pon
+                opacity: 1 !important; 
             }
-        }
-            /* --- BOTÓN MODO PRUEBA --- */
-        #btnModoPrueba {
-            position: fixed;
-            bottom: 20px;
-            left: 20px;
-            background: #555;
-            color: white;
-            padding: 12px 20px;
-            border: none;
-            border-radius: 30px;
-            font-weight: bold;
-            font-size: 0.9rem;
-            z-index: 9999;
-            cursor: pointer;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-            transition: all 0.3s;
-            font-family: 'Montserrat', sans-serif;
-        }
-        #btnModoPrueba.activo {
-            background: #28a745; /* Color verde cuando está en ON */
-            box-shadow: 0 4px 15px rgba(40, 167, 69, 0.4);
         }
     </style>
 </head>
@@ -836,7 +774,7 @@ Fecha de creación: 2026
         // Objeto global para guardar cómo está de llena cada zona a cada hora
         window.ocupacionDelDia = {}; 
 
-      window.comprobarDisponibilidad = async function() {
+        window.comprobarDisponibilidad = async function() {
             const fechaInput = document.getElementById('fecha').value;
             if (!fechaInput) { alert("Por favor, selecciona un día."); return; }
 
@@ -976,56 +914,6 @@ Fecha de creación: 2026
             }
         };
 
-            // Si el cliente tenía una hora marcada y de repente se bloquea, se la borramos
-            if (selectHora.selectedIndex > 0 && selectHora.options[selectHora.selectedIndex].disabled) {
-                selectHora.value = "";
-            }
-        };
-            let personasRaw = document.getElementById('personas').value;
-            let paxSolicitados = parseInt(personasRaw.replace('+', '')); 
-            if (isNaN(paxSolicitados)) paxSolicitados = 6;
-
-            const zonaSeleccionada = document.getElementById('zona').value;
-            const selectHora = document.getElementById('hora');
-            
-            const ahora = new Date();
-            const hoyString = ahora.toLocaleDateString("en-CA"); 
-            const fechaInput = document.getElementById('fecha').value;
-            const horaActualMinutos = (ahora.getHours() * 60) + ahora.getMinutes();
-
-            Array.from(selectHora.options).forEach(opcion => {
-                if (opcion.value === "") return; 
-                
-                opcion.text = opcion.value; 
-                opcion.disabled = false;    
-
-                // 1. Ocultar si la hora ya ha pasado hoy
-                if (fechaInput === hoyString) {
-                    const partes = opcion.value.split(':');
-                    const opcionMinutos = (parseInt(partes[0]) * 60) + parseInt(partes[1]);
-                    if (opcionMinutos <= horaActualMinutos) {
-                        opcion.disabled = true;
-                        opcion.text = opcion.value + " (Pasada)";
-                        return; // Paramos aquí para esta hora
-                    }
-                }
-
-                // 2. Ocultar si se supera el aforo máximo de la zona
-                const ocupado = (window.ocupacionDelDia[opcion.value] && window.ocupacionDelDia[opcion.value][zonaSeleccionada]) ? window.ocupacionDelDia[opcion.value][zonaSeleccionada] : 0;
-                const limiteMaximo = CAPACIDAD[zonaSeleccionada] || 6;
-
-                if (ocupado + paxSolicitados > limiteMaximo) {
-                    opcion.disabled = true;
-                    opcion.text = opcion.value + " (Completo)";
-                }
-            });
-
-            // Borrar la hora si se bloquea de repente al cambiar de zona
-            if (selectHora.selectedIndex > 0 && selectHora.options[selectHora.selectedIndex].disabled) {
-                selectHora.value = "";
-            }
-        };
-
         const formReserva = document.getElementById('formReserva');
         formReserva.addEventListener('submit', async (e) => {
             e.preventDefault(); 
@@ -1055,7 +943,12 @@ Fecha de creación: 2026
                 document.querySelector('#grupoZona [data-val="Bistrot"]').classList.add('activo');
                 document.getElementById('personas').value = "2";
                 document.getElementById('zona').value = "Bistrot";
-                window.cambiarPaso(4, 1); 
+                
+                if (typeof window.cambiarPaso === 'function') {
+                    window.cambiarPaso(4, 1); 
+                } else if (typeof cambiarPaso === 'function') {
+                    cambiarPaso(4, 1);
+                }
 
             } catch (error) {
                 console.error("Error de Firebase: ", error);
@@ -1068,6 +961,7 @@ Fecha de creación: 2026
     </script>
 </body>
 </html>
+
 
 
 
